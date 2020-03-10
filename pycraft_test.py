@@ -17,18 +17,6 @@ from minecraft.networking.packets import Packet, clientbound, serverbound
 
 load_dotenv()
 
-credentials = pika.PlainCredentials(
-    os.environ['RABBIT_USER'], os.environ['RABBIT_PW'])
-parameters = pika.ConnectionParameters(os.environ['RABBIT_HOST'],
-                                       os.environ['RABBIT_PORT'],
-                                       os.environ['RABBIT_VHOST'],
-                                       credentials)
-connection = pika.BlockingConnection(parameters)
-channel = connection.channel()
-channel.basic_qos(prefetch_count=2)
-channel.queue_declare(queue=os.environ['RABBIT_MOTD_QUEUE'], durable=True)
-
-
 @contextmanager
 def timeout(time):
     # Register a function to raise a TimeoutError on the signal.
@@ -50,23 +38,13 @@ def raise_timeout(signum, frame):
     raise TimeoutError("Took too long")
 
 
-auth_token = authentication.AuthenticationToken()
-try:
-    auth_token.authenticate(sys.argv[1], sys.argv[2])
-except YggdrasilError as e:
-    print(e)
-    time.sleep(60)
-    sys.exit()
-
-print("Logged in as %s..." % auth_token.username)
-
-
 class CallbackCallable():
     def __init__(self):
         self.connection = None
         self.done = False
         self.ip = None
         self.port = None
+        self.username = "" # get from database
 
     def __call__(self, ch, method, properties, body):
         json_body = json.loads(body)
@@ -77,15 +55,7 @@ class CallbackCallable():
             status = MinecraftServer.lookup(ipstr).status(retries=2)
             if status.players.online > 0:
                 print("server {} skipped because of {} online players".format(ipstr, status.players.online))
-                channel.basic_publish(exchange='',
-                                      routing_key=os.environ['RABBIT_MOTD_QUEUE'],
-                                      body=json.dumps({
-                                          'ip': self.ip,
-                                          'port': int(self.port)
-                                      }),
-                                      properties=pika.BasicProperties(
-                                          delivery_mode=2,  # make message persistent
-                                      ))
+                return
         except (socket.timeout, ConnectionRefusedError, ConnectionResetError, OSError):
             return
         try:
@@ -103,7 +73,7 @@ class CallbackCallable():
 
     def connect(self):
         self.connection = Connection(
-            self.ip, self.port, auth_token=auth_token, handle_exception=self.exception_handler)
+            self.ip, self.port, handle_exception=self.exception_handler, username=self.username)
         print("connecting to", self.ip)
         self.connection.register_packet_listener(
             self.handle_join_game, clientbound.play.JoinGamePacket)
@@ -137,8 +107,7 @@ class CallbackCallable():
         conn = psycopg2.connect(database=os.environ['POSTGRES_DATABASE'], user=os.environ['POSTGRES_USER'],
                                 password=os.environ['POSTGRES_PASSWORD'], host=os.environ['POSTGRES_HOST'], port=os.environ['POSTGRES_PORT'])
         with conn.cursor() as c:
-            c.execute(
-                "INSERT INTO public.servers (ip, port) VALUES(%s, %s) ON CONFLICT DO NOTHING;", (self.ip, self.port))
+            pass # update database with crackd status
         conn.commit()
         self.done = True
 
@@ -147,6 +116,4 @@ class CallbackCallable():
         self.done = True
 
 
-channel.basic_consume(
-    queue=os.environ['RABBIT_MOTD_QUEUE'], on_message_callback=CallbackCallable())
-channel.start_consuming()
+# get random servers from database
