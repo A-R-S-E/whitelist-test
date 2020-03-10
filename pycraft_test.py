@@ -73,9 +73,10 @@ class CallbackCallable():
         self.ip = json_body["ip"]
         self.port = int(json_body["port"])
         try:
-            status = MinecraftServer.lookup(
-                "{}:{}".format(self.ip, self.port)).status(retries=2)
+            ipstr = "{}:{}".format(self.ip, self.port)
+            status = MinecraftServer.lookup(ipstr).status(retries=2)
             if status.players.online > 0:
+                print("server {} skipped because of {} online players".format(ipstr, status.players.online))
                 channel.basic_publish(exchange='',
                                       routing_key=os.environ['RABBIT_MOTD_QUEUE'],
                                       body=json.dumps({
