@@ -1,4 +1,5 @@
 import signal
+from contextlib import contextmanager
 
 @contextmanager
 def timeout(time):

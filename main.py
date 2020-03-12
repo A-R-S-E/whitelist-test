@@ -1,26 +1,53 @@
 import json
 import os
-import signal
+import socket
 import sys
 import time
-from mcstatus import MinecraftServer
-from contextlib import contextmanager
+
 
 import psycopg2
 from dotenv import load_dotenv
+from mcstatus import MinecraftServer
 from minecraft import authentication
 from minecraft.compat import input
 from minecraft.exceptions import YggdrasilError
 from minecraft.networking.connection import Connection
 from minecraft.networking.packets import Packet, clientbound, serverbound
-
+import connection
 load_dotenv()
 
-class TryConnect():
+class Server():
     def __init__(self):
         self.conn = psycopg2.connect(database=os.environ['POSTGRES_DATABASE'], user=os.environ['POSTGRES_USER'],
                                 password=os.environ['POSTGRES_PASSWORD'], host=os.environ['POSTGRES_HOST'], port=os.environ['POSTGRES_PORT'])
         self.server_id = server_id
+        self.auth_token = connection.get_auth_token("","")
+
+    def run_on_random(self):
+        self.randomize_server()
+        if self.motd_ping():
+            cracked = self.test_cracked()
+            if not cracked:
+                self.test_whitelist()
+
+    def test_cracked(self):
+        packet = connection.MinecraftConnection(*self.address, self.random_user, "").run()
+        if packet:
+            self.write_packet(packet, cracked=True)
+            return True
+
+    def test_whitelist(self):
+        packet = connection.MinecraftConnection(*self.address, "", "", auth_token=self.auth_token).run()
+        if packet:
+            self.write_packet(packet)
+        
+    def write_packet(self, packet, cracked=False):
+        pass
+    
+    def randomize_server(self):
+        with self.conn.cursor() as c:
+            c.execute("SELECT id FROM servers ORDER BY random() LIMIT 1;")
+            self.server_id = c.fetchone()[0]
 
     @property
     def random_user(self):
