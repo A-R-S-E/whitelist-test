@@ -15,40 +15,33 @@ def get_auth_token(username, password):
     return False
 
 class MinecraftConnection():
-    def __init__(self, ip, port, username, password, auth_token=None):
+    def __init__(self, ip, port, username=None, auth_token=None):
+        if not any((username, auth_token)):
+            print("WARNING: no authentication provided")
         self.ip = ip
         self.port = port
         self.username = username
-        self.password = password
-        self.auth_token = authentication.AuthenticationToken() if auth_token is None else auth_token
-        self.skip_login = False if auth_token is None else True
+        self.auth_token = auth_token
         self.connection = None
         self.success_packet = None
     
+    def make_connection(self):
+        if self.username:
+            self.connection = Connection(self.ip, port=self.port, username=self.username)
+        if self.auth_token:
+            self.connection = Connection(self.ip, port=self.port, auth_token=self.auth_token)
+        if not self.connection:
+            raise AttributeError("No authentication provided")
+    
     def run(self):
-        login = True
-        if not self.skip_login:
-            login = self.login()
-        if login:
-            if not self.password:
-                self.connection = Connection(self.ip, port=self.port, username=username)
-            else:
-                self.connection = Connection(self.ip, port=self.port, auth_token=self.auth_token)
+        try:
+            self.make_connection()
             self.register_packet_listeners()
             self.run_until_complete()
+        except Exception as e:
+            print(e)
         return self.success_packet
 
-    def login(self):
-        if not self.password:
-            return True
-        try:
-            self.auth_token.authenticate(self.username, self.password)
-        except YggdrasilError as e:
-            print(e)
-        else:
-            return True
-        return False
-    
     def run_until_complete(self):
         self.connection.connect()
         self.success_packet = "connecting"
@@ -80,3 +73,5 @@ class MinecraftConnection():
         print('disconnected')
         self.success_packet = False
         self.connection.disconnect()
+
+#TODO: handle minecraft errors
