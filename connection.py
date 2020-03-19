@@ -63,6 +63,14 @@ class MinecraftConnection():
                 login.DisconnectPacket,
                 early=True
             )
+        self.connection.register_exception_handler(
+            self.handle_exception,
+        )
+    
+    def handle_exception(self, exception, exception_info):
+        print("exception:\n", exception, "\nInfo:\n", exception_info)
+        self.success_packet = False
+        self.connection.disconnect()
     
     def handle_join_game(self, packet):
         print('logged in: %r' % packet.__dict__)
@@ -73,5 +81,3 @@ class MinecraftConnection():
         print('disconnected')
         self.success_packet = False
         self.connection.disconnect()
-
-#TODO: handle minecraft errors

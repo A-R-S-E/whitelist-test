@@ -88,6 +88,6 @@ class ServerTester():
         finally:
             return False
 
-s = Server()
-s.server_id = 28650
-s.run()
+s = ServerTester()
+while True:
+    s.run()
