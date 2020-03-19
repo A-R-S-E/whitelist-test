@@ -18,17 +18,21 @@ load_dotenv()
 
 
 class ServerTester():
-    def __init__(self):
+    def __init__(self, skip_whitelist = False):
         self.conn = psycopg2.connect(database=os.environ['POSTGRES_DATABASE'], user=os.environ['POSTGRES_USER'],
                                 password=os.environ['POSTGRES_PASSWORD'], host=os.environ['POSTGRES_HOST'], port=os.environ['POSTGRES_PORT'])
         self.conn.autocommit = True
         self.server_id = None
-        self.auth_token = connection.get_auth_token(sys.argv[1],sys.argv[2])
+        self.skip_whitelist = skip_whitelist
+        if not self.skip_whitelist:
+            self.auth_token = connection.get_auth_token(sys.argv[1],sys.argv[2])
 
     def run(self):
+        if not self.server_id:
+            raise AttributeError("No server id known, set it with .randomize_server() or .server_id = <yourid>")
         if self.motd_ping():
             cracked = self.test_cracked()
-            if not cracked:
+            if not cracked and not self.skip_whitelist:
                 self.test_whitelist()
 
     def run_on_random(self):
@@ -88,6 +92,6 @@ class ServerTester():
         finally:
             return False
 
-s = ServerTester()
+s = ServerTester(skip_whitelist=True)
 while True:
-    s.run()
+    s.run_on_random()
