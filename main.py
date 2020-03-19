@@ -23,7 +23,7 @@ class ServerTester():
                                 password=os.environ['POSTGRES_PASSWORD'], host=os.environ['POSTGRES_HOST'], port=os.environ['POSTGRES_PORT'])
         self.conn.autocommit = True
         self.server_id = None
-        self.auth_token = connection.get_auth_token("","")
+        self.auth_token = connection.get_auth_token(sys.argv[1],sys.argv[2])
 
     def run(self):
         if self.motd_ping():
