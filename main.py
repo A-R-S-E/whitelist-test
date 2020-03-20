@@ -29,7 +29,7 @@ class ServerTester():
 
     def run(self):
         if not self.server_id:
-            raise AttributeError("No server id known, set it with .randomize_server() or .server_id = <yourid>")
+            raise AttributeError("No server id known, set it with .randomize_server() or .server_id = <yourid>") 
         if self.motd_ping():
             cracked = self.test_cracked()
             if not cracked and not self.skip_whitelist:
@@ -83,13 +83,11 @@ class ServerTester():
         ipstr = "{}:{}".format(*self.address)
         try:
             status = MinecraftServer.lookup(ipstr).status(retries=2)
-        except (socket.timeout, ConnectionRefusedError, ConnectionResetError, OSError):
+        except (socket.timeout, ConnectionRefusedError, ConnectionResetError, OSError) as e:
             pass
         else:
-            if status.players.online < 1:
-                return True
-        finally:
-            return False
+            return status.players.online < 1
+        return False
 
 s = ServerTester(skip_whitelist=True)
 while True:
