@@ -80,7 +80,6 @@ class ServerTester():
             return ip, port
 
     def motd_ping(self):
-        return True
         ipstr = "{}:{}".format(*self.address)
         try:
             status = MinecraftServer.lookup(ipstr).status(retries=2)
